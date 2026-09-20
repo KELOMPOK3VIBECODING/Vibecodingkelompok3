@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Katalog Buku - Libraryzzz Engeneeringzz</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- CONTAINER PESAN/NOTIFIKASI ALERTS -->
+    <div id="alert-container" class="alert-container hidden"></div>
+
+    <!-- SECTION 1: HALAMAN LOGIN -->
+    <section id="login-section" class="auth-wrapper">
+      <div class="card auth-card">
+        <div class="auth-header">
+          <h2>Login Mahasiswa</h2>
+          <p>Masukan NIM dan Password untuk mengakses sistem perpustakaan</p>
+        </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="nim">NIM</label>
+            <input
+              type="text"
+              id="nim"
+              placeholder="Contoh: 1001"
+              required
+              autocomplete="off"
+            />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="Masukan password"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            Masuk ke Sistem
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- SECTION 2: MAIN DASHBOARD (TERPROTEKSI LOGIN) -->
+    <div id="main-section" class="main-wrapper hidden">
+      <!-- NAVBAR / HEADER -->
+      <header class="navbar">
+        <div class="navbar-brand">
+          <h1>Libraryzzz Engeneeringzz</h1>
+        </div>
+        <div class="navbar-user">
+          <div class="user-info">
+            <span id="user-name-display" class="user-name">Mahasiswa</span>
+            <span id="quota-badge" class="badge badge-info"
+              >Buku Aktif: 0/3</span
+            >
+          </div>
+          <a href="index.html" class="btn btn-outline active">Katalog Buku</a>
+          <a href="peminjaman.html" class="btn btn-outline">Peminjaman Saya</a>
+          <button id="logout-btn" class="btn btn-outline">Keluar</button>
+        </div>
+      </header>
+
+      <!-- CONTENT CONTAINER -->
+      <main class="container">
+        <!-- SECTION KATALOG BUKU -->
+        <section class="section-block">
+          <div class="section-header">
+            <div>
+              <h2>Katalog Buku Perpustakaan</h2>
+              <p>Pilih buku populer yang ingin Anda pinjam</p>
+            </div>
+            <!-- SEARCH BAR -->
+            <div class="search-box">
+              <input
+                type="text"
+                id="search-input"
+                placeholder="Cari judul atau pengarang..."
+              />
+            </div>
+          </div>
+
+          <!-- GRID KATALOG BUKU -->
+          <div id="book-grid" class="book-grid">
+            <!-- Item buku di-render via JavaScript -->
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
