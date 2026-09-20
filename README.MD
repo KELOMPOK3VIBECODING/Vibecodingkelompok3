@@ -2,12 +2,12 @@ Libraryzzz Engeneeringzz - Microservices System
 
 Aplikasi Sistem Peminjaman Buku Perpustakaan berbasis Microservices Architecture yang dikembangkan menggunakan Node.js,Express.js,HTML/CSS/JS Vanilla,dan dipercepat dengan bantuan AI Coding Tool.
 
-Anggota Kelompok 3
-Nita - Source Code & README.md, Bagian Codingannya:Book-Service.
-Helma - Diagram Architecture/Microservices, Bagian Codingannya:Borrowing-Service.
-Vera - Daftar Technology & masalah/kesalahan yang di temukan pada AI, Bagian Codingannya:Frontend.
-Nabila - Dokumentasi AI Coding Tool
-Ari - Prompt AI
+Pembagian Tugas Anggota Kelompok 3:
+Nita - (Source Code & README.md, Bagian Codingannya:Book-Service).
+Helma Hariyani - (Diagram Architecture/Microservices, Bagian Codingannya:Borrowing-Service).
+Vera Armyanti - (Daftar Technology & masalah/kesalahan yang di temukan pada AI, Bagian Codingannya:Frontend).
+Nabila Stefani - (Dokumentasi AI Coding Tool).
+Ari Rachmad Nur - (Prompt AI).
 
 Diagram Arsitektur Microservice
 
