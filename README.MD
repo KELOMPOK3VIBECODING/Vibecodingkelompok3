@@ -1,119 +1,248 @@
-Libraryzzz Engeneeringzz - Microservices System
+# Libraryzzz Engeneeringzz
 
-Aplikasi Sistem Peminjaman Buku Perpustakaan berbasis Microservices Architecture yang dikembangkan menggunakan Node.js,Express.js,HTML/CSS/JS Vanilla,dan dipercepat dengan bantuan AI Coding Tool.
+# API Perpustakaan Terintegrasi
 
-Pembagian Tugas Anggota Kelompok 3:
-Nita - (Source Code & README.md, Bagian Codingannya:Book-Service).
-Helma Hariyani - (Diagram Architecture/Microservices, Bagian Codingannya:Borrowing-Service).
-Vera Armyanti - (Daftar Technology & masalah/kesalahan yang di temukan pada AI, Bagian Codingannya:Frontend).
-Nabila Stefani - (Dokumentasi AI Coding Tool).
-Ari Rachmad Nur - (Prompt AI).
+Backend REST API untuk proyek UTS Vibe Coding Kelompok 4. Aplikasi ini menggunakan Laravel, PHP, MySQL, dan Laravel Sanctum untuk menyediakan autentikasi mahasiswa, katalog buku, serta transaksi peminjaman dan pengembalian buku.
 
-Data Akun Mahasiswa Terdaftar (Demo Kredensial)
+## 1. Teknologi yang Digunakan
 
-Sistem ini menyediakan akun mahasiswa aktif yang digunakan untuk pengujian alur peminjaman:
+- **Bahasa backend:** PHP (`composer.json` mensyaratkan PHP `^8.3`)
+- **Framework:** Laravel (`composer.json` mensyaratkan `laravel/framework` `^13.17`)
+- **Autentikasi token:** Laravel Sanctum (`^4.3`)
+- **Database:** MySQL
+- **Komunikasi:** REST API melalui HTTP/JSON
+- **Pengujian API:** Postman
+- **Lingkungan pengembangan yang digunakan:** XAMPP untuk MySQL dan PHP/Composer yang tersedia di komputer pengembang
 
-| Nama Mahasiswa | NIM (Username) | Password | Peran / Hak Akses | Batas Kuota |
-| Nita Stefani| `1001` | `user1001` | Mahasiswa (Akun Uji 1) | Maksimal 3 Buku |
-| Helma Armyanti| `1002` | `user1002` | Mahasiswa (Akun Uji 2) | Maksimal 3 Buku |
-| nabila hariyani| `1003` | `user1003` | Mahasiswa (Akun Uji 3) | Maksimal 3 Buku |
+Periksa versi aktual pada komputer dengan `php -v` dan `php artisan --version`.
 
-Panduan Menjalankan Sistem
+## 2. Persyaratan
 
-Untuk menjalankan sistem secara lengkap, Anda membutuhkan "2 terminal terpisah" untuk backend dan membuka frontend di browser:
+Pastikan perangkat sudah memiliki:
 
-1. Menjalankan Book Service (Port 5001)
-   Buka terminal pertama:
+- PHP 8.3 atau versi yang memenuhi persyaratan proyek
+- Composer
+- MySQL (misalnya melalui XAMPP)
+- Postman atau aplikasi sejenis untuk pengujian API
 
-cd book-service
-npm install
-node server.js
+## 3. Instalasi dan Menjalankan Backend
 
-Layanan "Book Service" akan aktif di: `http://localhost:5001`
+1. Jalankan layanan MySQL melalui XAMPP.
+2. Buka terminal pada folder backend:
 
-2. Menjalankan Borrowing Service (Port 5002)
+   ```bash
+   cd C:\xampp\VibeCoding\perpustakaan-api
+   ```
 
-Buka terminal kedua:
+3. Jika dependency belum terpasang, jalankan:
 
-cd borrowing-service
-npm install
-node server.js
+   ```bash
+   composer install
+   ```
 
-Layanan "Borrowing Service" akan aktif di: `http://localhost:5002`
+4. Pastikan file `.env` tersedia. Jika belum, buat salinan dari `.env.example`:
 
-3. Menjalankan Frontend Web Client:
+   ```bat
+   copy .env.example .env
+   ```
 
-1. Buka direktori/folder `frontend/`.
-1. Klik dua kali pada file "`index.html`" untuk memuat antarmuka di browser (atau jalankan menggunakan ekstensi Live Server di VS Code).
+5. Jika `APP_KEY` belum dibuat, jalankan:
 
-Langkah-Langkah Penggunaan & Pengujian Sistem
+   ```bash
+   php artisan key:generate
+   ```
 
-Berikut panduan langkah demi langkah menggunakan aplikasi saat demo/testing:
+6. Buat database bernama `perpustakaan` melalui phpMyAdmin atau MySQL. Atur koneksi database pada `.env`:
 
-Langkah 1: Login ke Sistem
+   ```dotenv
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=perpustakaan
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
 
-1. Akses halaman `index.html` pada browser.
-2. Masukkan salah satu akun mahasiswa, contohnya:
+   Sesuaikan username dan password dengan konfigurasi MySQL lokal.
 
-NIM: `1001`
-Password: `user1001`
+7. Pastikan tabel dan data yang diperlukan sudah tersedia. Implementasi controller menggunakan tabel `users`, `books`, dan `loans`. Database proyek sebelumnya dapat dibuat secara manual. **Jangan menjalankan `php artisan migrate` sebelum memeriksa migration**, karena migration bawaan Laravel pada folder `database/migrations` belum tentu sama dengan skema database perpustakaan yang digunakan.
 
-3. Klik tombol "Login" untuk masuk ke sistem.
+8. Jalankan backend:
 
-Langkah 2: Melihat Katalog Buku
+   ```bash
+   php artisan serve
+   ```
 
-- Pada halaman Katalog Buku (`index.html`), sistem memuat daftar buku yang diambil secara _real-time_ via REST API dari "Book Service" (Port 5001).
-- Setiap buku yang belum dipinjam akan memiliki status "Tersedia" dan tombol "Pinjam" dalam kondisi aktif.
+Secara default server Laravel berjalan pada:
 
-Langkah 3: Meminjam Buku (Alur Inter-Service)
+```text
+http://127.0.0.1:8000
+```
 
-1. Sebagai mahasiswa (`1001`), klik tombol "Pinjam" pada salah satu buku.
-2. "Borrowing Service" (Port 5002) memvalidasi kuota peminjaman, berkomunikasi dengan "Book Service" (Port 5001) via API untuk mengunci status ketersediaan buku, dan mencatat transaksi.
-3. Notifikasi peminjaman berhasil akan muncul beserta informasi "tanggal jatuh tempo (7 hari)".
-4. Buku yang dipinjam otomatis muncul pada halaman "Peminjaman Saya (`peminjaman.html`)".
-5. Pada katalog utama, tombol buku tersebut otomatis berubah statusnya menjadi "Sedang Dipinjam".
+## 4. Base URL API
 
-Langkah 4: Menguji Batas Maksimal Kuota (Maksimal 3 Buku)
+```text
+http://127.0.0.1:8000/api
+```
 
-- Jika mahasiswa meminjam hingga "3 buku", sistem akan mengunci fungsi peminjaman.
-- Tombol peminjaman pada buku lain di katalog akan otomatis dinonaktifkan dengan status "Batas Tercapai (Maksimal 3 Buku)".
+Route API didefinisikan dalam `routes/api.php`.
 
-Langkah 5: Mengembalikan Buku
+## 5. Daftar Endpoint
 
-1. Buka halaman Peminjaman Saya (`peminjaman.html`).
-2. Klik tombol Kembalikan di sebelah buku yang ingin dikembalikan.
-3. Borrowing Service memperbarui transaksi menjadi selesai dan meminta "Book Service" memperbarui status ketersediaan buku kembali menjadi "Tersedia".
-4. Buku akan terhapus dari daftar peminjaman aktif dan dapat dipinjam kembali oleh mahasiswa lain.
+| Method | Endpoint             | Autentikasi  | Fungsi                                           |
+| ------ | -------------------- | ------------ | ------------------------------------------------ |
+| POST   | `/login`             | Tidak        | Login mahasiswa dan mendapatkan token            |
+| GET    | `/books`             | Tidak        | Menampilkan daftar buku                          |
+| GET    | `/books/{id}`        | Tidak        | Menampilkan detail buku                          |
+| GET    | `/loans/{nim}`       | Bearer token | Menampilkan transaksi peminjaman berdasarkan NIM |
+| POST   | `/loans`             | Bearer token | Membuat transaksi peminjaman                     |
+| PUT    | `/loans/{id}/return` | Bearer token | Mengembalikan buku berdasarkan ID transaksi      |
 
-Diagram Arsitektur Microservice
+**Catatan:** route transaksi peminjaman dilindungi middleware `auth:sanctum`. Pada implementasi saat ini, `nim` pada request peminjaman dikirim dalam body; pengujian harus memastikan bahwa identitas mahasiswa tidak dapat dimanipulasi hanya dengan mengganti NIM.
 
-graph TD
-%% Frontend Layer
-subgraph Frontend_Layer ["Client Layer (Frontend)"]
-UI1["index.html\n(Katalog Buku)"]
-UI2["peminjaman.html\n(Peminjaman Saya)"]
-JS["script.js\n(Fetch API Client)"]
+## 6. Cara Menguji dengan Postman
 
-        UI1 --> JS
-        UI2 --> JS
-    end
+Pastikan backend berjalan sebelum mengirim request. Untuk request JSON, pilih **Body → raw → JSON**.
 
-    %% Microservices Layer
-    subgraph Microservices_Layer ["Backend Layer (Node.js & Express)"]
-        BS["Book Service\n(Port: 5001)\nserver.js"]
-        BRS["Borrowing Service\n(Port: 5002)\nserver.js"]
-    end
+### 6.1 Login
 
-    %% Communication
-    JS -- "GET/PATCH /api/books\n(HTTP REST API)" --> BS
-    JS -- "GET/POST/DELETE /api/borrowings\n(HTTP REST API)" --> BRS
-    BRS -. "Inter-service / Validation Data\n(Status Buku & Limit)" .-> BS
+- Method: `POST`
+- URL: `http://127.0.0.1:8000/api/login`
+- Body:
 
-AI Coding Tool Documentation
+  ```json
+  {
+    "nim": "2441919017",
+    "password": "123456"
+  }
+  ```
 
-Pengembangan sistem ini memanfaatkan AI Coding Tool untuk membantu:
+Jika berhasil, API mengembalikan `200 OK` beserta token dan informasi pengguna. Simpan token dari respons untuk request yang dilindungi.
 
-1. Generasi struktur awal server Node.js & Express (`server.js`) untuk `book-service` dan `borrowing-service`.
-2. Refactoring antarmuka dari monolitik menjadi dua halaman terpisah (`index.html` & `peminjaman.html`).
-3. Mengubah logika penyimpanan lokal (`localStorage`) menjadi pemanggilan _asynchronous_ `fetch()` API.
-4. Solusi penanganan _CORS Error_ dan pemisahan port service.
+### 6.2 Menampilkan daftar buku
+
+- Method: `GET`
+- URL: `http://127.0.0.1:8000/api/books`
+
+### 6.3 Menampilkan detail buku
+
+- Method: `GET`
+- URL contoh: `http://127.0.0.1:8000/api/books/1`
+
+Ganti `1` dengan ID buku yang tersedia di database.
+
+### 6.4 Melihat transaksi mahasiswa
+
+- Method: `GET`
+- URL contoh: `http://127.0.0.1:8000/api/loans/2441919017`
+- Tab **Authorization**: pilih **Bearer Token**, lalu masukkan token hasil login.
+
+### 6.5 Meminjam buku
+
+- Method: `POST`
+- URL: `http://127.0.0.1:8000/api/loans`
+- Authorization: **Bearer Token**
+- Body:
+
+  ```json
+  {
+    "nim": "2441919017",
+    "book_id": 1
+  }
+  ```
+
+Gunakan ID buku yang ada dan tersedia. Jika berhasil, implementasi saat ini mengembalikan `201 Created`.
+
+### 6.6 Mengembalikan buku
+
+- Method: `PUT`
+- URL contoh: `http://127.0.0.1:8000/api/loans/1/return`
+- Authorization: **Bearer Token**
+
+Angka `1` pada contoh adalah **ID transaksi pada tabel `loans`, bukan ID buku**. Gunakan ID transaksi yang benar-benar ada di database. Endpoint ini tidak memerlukan body pada implementasi saat ini.
+
+### 6.7 Memeriksa perubahan ketersediaan
+
+1. Kirim `GET /api/books` dan catat nilai `is_available` untuk buku yang akan diuji.
+2. Pinjam buku melalui `POST /api/loans`.
+3. Kirim ulang `GET /api/books`; buku yang berhasil dipinjam seharusnya memiliki `is_available: false`.
+4. Kembalikan transaksi melalui `PUT /api/loans/{id}/return`.
+5. Kirim ulang `GET /api/books`; setelah pengembalian berhasil, buku seharusnya memiliki `is_available: true`.
+
+Simpan screenshot respons yang benar-benar diperoleh di folder `api-test/`.
+
+## 7. Aturan Bisnis yang Diharapkan
+
+- Mahasiswa maksimal memiliki tiga peminjaman aktif.
+- Buku yang tidak tersedia ditolak ketika hendak dipinjam.
+- Tanggal jatuh tempo ditetapkan tujuh hari setelah tanggal peminjaman.
+- Saat pengembalian berhasil, status transaksi menjadi `dikembalikan` dan buku tersedia kembali.
+
+Aturan ini harus diverifikasi melalui pengujian. Controller yang ada saat ini mengembalikan `400` untuk buku tidak tersedia, batas peminjaman tercapai, dan transaksi yang sudah dikembalikan; status aktual tersebut perlu dicocokkan dengan kontrak API dan kebutuhan dosen.
+
+## 8. HTTP Status Code
+
+- `200 OK`: permintaan berhasil diproses, misalnya login atau membaca data.
+- `201 Created`: transaksi peminjaman baru berhasil dibuat.
+- `400 Bad Request`: pada implementasi saat ini digunakan untuk beberapa kondisi bisnis yang ditolak.
+- `401 Unauthorized`: kredensial login salah atau request ke endpoint terlindungi tidak memiliki autentikasi valid.
+- `404 Not Found`: data buku, pengguna, atau transaksi tidak ditemukan.
+- `422 Unprocessable Content`: data request tidak lolos validasi Laravel.
+
+Respons aktual dapat berbeda tergantung jalur kode dan validasi yang dijalankan.
+
+## 9. Akun Uji
+
+Akun yang tercatat untuk pengujian lokal:
+
+| NIM          | Password |
+| ------------ | -------- |
+| `2441919017` | `123456` |
+| `2441919010` | `123456` |
+| `2441919015` | `123456` |
+| `2441919055` | `123456` |
+| `2441919056` | `123456` |
+
+Pastikan akun tersebut tersedia di database sebelum digunakan. Kredensial ini hanya untuk data uji lokal, bukan untuk penggunaan produksi.
+
+## 10. Struktur Proyek dan Dokumentasi
+
+File penting backend:
+
+```text
+perpustakaan-api/
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── AuthController.php
+│   │   ├── BookController.php
+│   │   └── LoanController.php
+│   └── Models/
+├── routes/
+│   └── api.php
+├── database/
+│   └── migrations/
+├── docs/
+│   ├── API-CONTRACT.md
+│   ├── CODE_REVIEW_LOG.md
+│   └── AI-PROMPTS.md
+├── api-test/
+├── .env
+├── composer.json
+└── README.md
+```
+
+Dokumentasi pendukung:
+
+- `docs/API-CONTRACT.md` — detail kontrak endpoint.
+- `docs/CODE_REVIEW_LOG.md` — temuan review kode dan tindak lanjut.
+- `docs/AI-PROMPTS.md` — prompt AI dan catatan validasi.
+- `api-test/` — screenshot atau Postman Collection hasil pengujian.
+
+Jangan mengunggah `.env` berisi kredensial database atau rahasia lain ke repositori publik.
+
+## 11. Catatan Review Sebelum Pengumpulan
+
+- Implementasi login pada `AuthController.php` saat ini membandingkan password langsung dengan nilai pada database. Untuk keamanan yang benar, gunakan hashing password dan verifikasi dengan mekanisme seperti `Hash::check`, setelah data password disesuaikan.
+- Pastikan seluruh aturan bisnis diuji melalui Postman, termasuk buku tidak tersedia, batas tiga buku aktif, dan pengembalian.
+- Cocokkan dokumentasi dengan hasil aktual dari API, bukan hanya hasil yang diharapkan.
+- Jangan menyatakan tes lulus sebelum bukti respons atau pemeriksaan database tersedia.

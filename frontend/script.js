@@ -1,8 +1,28 @@
-const API_URL = "http://localhost:8000/api";
+const API_URL = "http://127.0.0.1:8000/api";
 
 let currentUser = JSON.parse(localStorage.getItem("currentUser")) || null;
+let authToken = localStorage.getItem("authToken") || null;
+
 let books = [];
 let loans = [];
+
+// ==========================================
+// HEADER API
+// ==========================================
+
+function getHeaders(json = true) {
+  const headers = {};
+
+  if (json) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
+  return headers;
+}
 
 // ==========================================
 // LOGIN
@@ -17,31 +37,32 @@ async function handleLogin(event) {
   try {
     const response = await fetch(`${API_URL}/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nim: nim,
-        password: password,
-      }),
+      headers: getHeaders(),
+      body: JSON.stringify({ nim, password }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      alert(data.message || "Login gagal");
+      alert(data.message || "Login gagal.");
       return;
     }
 
+    if (!data.token || !data.user) {
+      alert("Respons login tidak berisi token atau data user.");
+      return;
+    }
+
+    authToken = data.token;
     currentUser = data.user;
 
+    localStorage.setItem("authToken", authToken);
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
     showMainPage();
+    await loadData();
 
     showNotification("Login berhasil!", "success");
-
-    await loadData();
   } catch (error) {
     console.error(error);
     alert("Tidak dapat terhubung ke server Laravel.");
@@ -49,20 +70,12 @@ async function handleLogin(event) {
 }
 
 // ==========================================
-// TAMPILKAN HALAMAN UTAMA
+// HALAMAN UTAMA
 // ==========================================
 
 function showMainPage() {
-  const loginSection = document.getElementById("login-section");
-  const mainSection = document.getElementById("main-section");
-
-  if (loginSection) {
-    loginSection.classList.add("hidden");
-  }
-
-  if (mainSection) {
-    mainSection.classList.remove("hidden");
-  }
+  document.getElementById("login-section")?.classList.add("hidden");
+  document.getElementById("main-section")?.classList.remove("hidden");
 
   updateUserInfo();
 }
@@ -72,32 +85,49 @@ function showMainPage() {
 // ==========================================
 
 function updateUserInfo() {
-  const userNameDisplay = document.getElementById("user-name-display");
+  const display = document.getElementById("user-name-display");
 
-  if (userNameDisplay && currentUser) {
-    userNameDisplay.textContent = currentUser.nama;
+  if (display && currentUser) {
+    display.textContent = currentUser.nama;
   }
 
   updateQuota();
 }
 
 // ==========================================
-// AMBIL DATA BUKU DARI LARAVEL
+// TOKEN / SESI TIDAK VALID
+// ==========================================
+
+function handleUnauthorized(response) {
+  if (response.status !== 401) {
+    return false;
+  }
+
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("currentUser");
+
+  authToken = null;
+  currentUser = null;
+  loans = [];
+
+  alert("Sesi login tidak berlaku. Silakan login kembali.");
+  window.location.reload();
+
+  return true;
+}
+
+// ==========================================
+// AMBIL DATA BUKU
 // ==========================================
 
 async function fetchBooks() {
-  try {
-    const response = await fetch(`${API_URL}/books`);
+  const response = await fetch(`${API_URL}/books`);
 
-    if (!response.ok) {
-      throw new Error("Gagal mengambil data buku");
-    }
-
-    books = await response.json();
-  } catch (error) {
-    console.error(error);
-    alert("Gagal mengambil data buku dari Laravel.");
+  if (!response.ok) {
+    throw new Error("Gagal mengambil data buku.");
   }
+
+  books = await response.json();
 }
 
 // ==========================================
@@ -105,27 +135,31 @@ async function fetchBooks() {
 // ==========================================
 
 async function fetchLoans() {
-  if (!currentUser) {
+  if (!currentUser || !authToken) {
     loans = [];
     return;
   }
 
-  try {
-    const response = await fetch(`${API_URL}/loans/${currentUser.nim}`);
+  const response = await fetch(
+    `${API_URL}/loans/${encodeURIComponent(currentUser.nim)}`,
+    {
+      headers: getHeaders(false),
+    },
+  );
 
-    if (!response.ok) {
-      throw new Error("Gagal mengambil data peminjaman");
-    }
-
-    loans = await response.json();
-  } catch (error) {
-    console.error(error);
-    alert("Gagal mengambil data peminjaman.");
+  if (handleUnauthorized(response)) {
+    throw new Error("Sesi login tidak berlaku.");
   }
+
+  if (!response.ok) {
+    throw new Error("Gagal mengambil data peminjaman.");
+  }
+
+  loans = await response.json();
 }
 
 // ==========================================
-// BUKU YANG MASIH DIPINJAM
+// PEMINJAMAN AKTIF
 // ==========================================
 
 function getActiveLoans() {
@@ -133,59 +167,53 @@ function getActiveLoans() {
 }
 
 // ==========================================
-// UPDATE QUOTA
+// KUOTA BUKU
 // ==========================================
 
 function updateQuota() {
-  const quotaBadge = document.getElementById("quota-badge");
+  const badge = document.getElementById("quota-badge");
 
-  if (!quotaBadge) {
-    return;
+  if (badge) {
+    badge.textContent = `Buku Aktif: ${getActiveLoans().length}/3`;
   }
-
-  const activeLoans = getActiveLoans();
-
-  quotaBadge.textContent = `Buku Aktif: ${activeLoans.length}/3`;
 }
 
 // ==========================================
-// TAMPILKAN BUKU
+// KATALOG BUKU
 // ==========================================
 
 function renderBooks() {
-  const bookGrid = document.getElementById("book-grid");
+  const grid = document.getElementById("book-grid");
 
-  if (!bookGrid) {
-    return;
-  }
+  if (!grid) return;
 
-  const searchInput = document.getElementById("search-input");
-
-  const keyword = searchInput ? searchInput.value.toLowerCase().trim() : "";
+  const input = document.getElementById("search-input");
+  const keyword = input ? input.value.toLowerCase().trim() : "";
 
   const filteredBooks = books.filter((book) => {
     const judul = (book.judul || "").toLowerCase();
-
     const pengarang = (book.pengarang || "").toLowerCase();
 
     return judul.includes(keyword) || pengarang.includes(keyword);
   });
 
   if (filteredBooks.length === 0) {
-    bookGrid.innerHTML = `
-            <p style="padding: 20px;">
-                Buku tidak ditemukan.
-            </p>
-        `;
-
+    grid.innerHTML = `
+      <p style="padding:20px">
+        Buku tidak ditemukan.
+      </p>
+    `;
     return;
   }
 
   const activeLoans = getActiveLoans();
 
-  bookGrid.innerHTML = filteredBooks
+  grid.innerHTML = filteredBooks
     .map((book) => {
-      const isAvailable = book.is_available;
+      const available =
+        book.is_available === true ||
+        book.is_available === 1 ||
+        book.is_available === "1";
 
       const alreadyBorrowed = activeLoans.some(
         (loan) => Number(loan.book_id) === Number(book.id),
@@ -193,66 +221,62 @@ function renderBooks() {
 
       let buttonHTML = "";
 
-      if (!isAvailable) {
+      if (!available && alreadyBorrowed) {
         buttonHTML = `
-    <button
-      class="btn btn-outline"
-      disabled
-    >
-      Sedang Dipinjam
-    </button>
-  `;
-      } else if (alreadyBorrowed) {
+          <button class="btn btn-outline" disabled>
+            Sedang Anda Pinjam
+          </button>
+        `;
+      } else if (!available) {
         buttonHTML = `
-    <button
-      class="btn btn-outline"
-      disabled
-    >
-      Sedang Anda Pinjam
-    </button>
-  `;
+          <button class="btn btn-outline" disabled>
+            Sedang Dipinjam
+          </button>
+        `;
+      } else if (activeLoans.length >= 3) {
+        buttonHTML = `
+          <button class="btn btn-outline" disabled>
+            Batas 3 Buku Tercapai
+          </button>
+        `;
       } else {
         buttonHTML = `
-    <button
-      class="btn btn-primary"
-      onclick="handleBorrow(${book.id})"
-    >
-      Pinjam Buku
-    </button>
-  `;
+          <button
+            class="btn btn-primary"
+            onclick="handleBorrow(${Number(book.id)})"
+          >
+            Pinjam Buku
+          </button>
+        `;
       }
 
+      const imagePath = book.gambar || "";
+
       return `
-            <div class="book-card">
+        <div class="book-card">
+          <div class="book-image">
+            <img
+              src="${imagePath}"
+              alt="${book.judul || "Buku"}"
+              onerror="this.style.display='none'"
+            >
+          </div>
 
-                <div class="book-image">
-                    <img
-                        src="${book.gambar || ""}"
-                        alt="${book.judul}"
-                        onerror="this.style.display='none'"
-                    >
-                </div>
+          <div class="book-info">
+            <h3>${book.judul || "-"}</h3>
 
-                <div class="book-info">
+            <p>${book.pengarang || "-"}</p>
 
-                    <h3>${book.judul}</h3>
+            ${
+              available
+                ? '<span class="status-available">Tersedia</span>'
+                : '<span class="status-unavailable">Sedang Dipinjam</span>'
+            }
 
-                    <p>
-                        ${book.pengarang}
-                    </p>
-
-                    ${
-                      isAvailable
-                        ? `<span class="status-available">Tersedia</span>`
-                        : `<span class="status-unavailable">Sedang Dipinjam</span>`
-                    }
-
-                    ${buttonHTML}
-
-                </div>
-
-            </div>
-        `;
+            ${buttonHTML}
+          </div>
+        </div>
+      `;
     })
     .join("");
 }
@@ -262,29 +286,20 @@ function renderBooks() {
 // ==========================================
 
 async function handleBorrow(bookId) {
-  if (!currentUser) {
-    alert("Silakan login terlebih dahulu.");
+  if (!currentUser || !authToken) {
+    alert("Silakan login kembali.");
     return;
   }
 
-  const activeLoans = getActiveLoans();
-
-  if (activeLoans.length >= 3) {
-    showNotification(
-      "PERINGATAN: Anda telah mencapai batas maksimal 3 buku!",
-      "warning",
-    );
+  if (getActiveLoans().length >= 3) {
+    showNotification("Maksimal peminjaman adalah 3 buku.", "warning");
     return;
   }
 
   try {
     const response = await fetch(`${API_URL}/loans`, {
       method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
+      headers: getHeaders(),
       body: JSON.stringify({
         nim: currentUser.nim,
         book_id: Number(bookId),
@@ -293,18 +308,22 @@ async function handleBorrow(bookId) {
 
     const data = await response.json();
 
+    if (handleUnauthorized(response)) return;
+
     if (!response.ok) {
-      alert(data.message || "Gagal meminjam buku.");
+      showNotification(data.message || "Gagal meminjam buku.", "warning");
       return;
     }
 
-    showNotification("Buku berhasil dipinjam!", "success");
+    showNotification(data.message || "Buku berhasil dipinjam!", "success");
 
     await loadData();
   } catch (error) {
     console.error(error);
 
-    alert("Tidak dapat terhubung ke server Laravel.");
+    if (error.message !== "Sesi login tidak berlaku.") {
+      showNotification("Gagal menghubungi API Laravel.", "warning");
+    }
   }
 }
 
@@ -313,93 +332,90 @@ async function handleBorrow(bookId) {
 // ==========================================
 
 async function handleReturn(loanId) {
+  if (!currentUser || !authToken) {
+    alert("Silakan login kembali.");
+    return;
+  }
+
   try {
-    const response = await fetch(`${API_URL}/loans/${loanId}/return`, {
+    const response = await fetch(`${API_URL}/loans/${Number(loanId)}/return`, {
       method: "PUT",
+      headers: getHeaders(false),
     });
 
     const data = await response.json();
+
+    if (handleUnauthorized(response)) return;
 
     if (!response.ok) {
       showNotification(data.message || "Gagal mengembalikan buku.", "warning");
       return;
     }
 
-    showNotification("Buku berhasil dikembalikan!", "success");
+    showNotification(data.message || "Buku berhasil dikembalikan!", "success");
 
     await loadData();
   } catch (error) {
     console.error(error);
 
-    showNotification("Tidak dapat terhubung ke server Laravel.", "warning");
+    if (error.message !== "Sesi login tidak berlaku.") {
+      showNotification("Gagal menghubungi API Laravel.", "warning");
+    }
   }
 }
+
 // ==========================================
-// TAMPILKAN DATA PEMINJAMAN
+// TABEL PEMINJAMAN SAYA
 // ==========================================
 
 function renderLoans() {
-  const loanListBody = document.getElementById("loan-list-body");
+  const body = document.getElementById("loan-list-body");
 
-  if (!loanListBody) {
-    return;
-  }
+  if (!body) return;
 
-  // Hanya tampilkan peminjaman yang masih aktif
-  const activeLoans = loans.filter((loan) => loan.status === "dipinjam");
+  const activeLoans = getActiveLoans();
 
-  // Kalau tidak ada peminjaman
   if (activeLoans.length === 0) {
-    loanListBody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center;">
-                    Belum ada buku yang sedang dipinjam.
-                </td>
-            </tr>
-        `;
-
+    body.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center">
+          Belum ada buku yang sedang dipinjam.
+        </td>
+      </tr>
+    `;
     return;
   }
 
-  loanListBody.innerHTML = activeLoans
+  body.innerHTML = activeLoans
     .map((loan) => {
-      // Cari data buku berdasarkan book_id
       const book = books.find(
-        (book) => Number(book.id) === Number(loan.book_id),
+        (item) => Number(item.id) === Number(loan.book_id),
       );
 
-      const judul = book ? book.judul : "Buku tidak ditemukan";
-
-      const pengarang = book ? book.pengarang : "-";
-
       return `
-            <tr>
+        <tr>
+          <td>${book ? book.judul : "Buku tidak ditemukan"}</td>
 
-                <td>${judul}</td>
+          <td>${book ? book.pengarang : "-"}</td>
 
-                <td>${pengarang}</td>
+          <td>${formatDate(loan.tanggal_pinjam)}</td>
 
-                <td>${formatDate(loan.tanggal_pinjam)}</td>
+          <td>${formatDate(loan.tanggal_jatuh_tempo)}</td>
 
-                <td>${formatDate(loan.tanggal_jatuh_tempo)}</td>
+          <td>
+            <span class="status-available">Dipinjam</span>
+          </td>
 
-                <td>
-                    <span class="status-available">
-                        Dipinjam
-                    </span>
-                </td>
-
-                <td>
-                    <button
-                        class="btn btn-primary"
-                        onclick="handleReturn(${loan.id})"
-                    >
-                        Kembalikan
-                    </button>
-                </td>
-
-            </tr>
-        `;
+          <td>
+            <button
+              class="btn btn-primary"
+              onclick="handleReturn(${Number(loan.id)})"
+            >
+              Kembalikan
+            </button>
+          </td>
+        </tr>
+      `;
     })
     .join("");
 }
@@ -408,38 +424,48 @@ function renderLoans() {
 // FORMAT TANGGAL
 // ==========================================
 
-function formatDate(dateString) {
-  if (!dateString) {
+function formatDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
     return "-";
   }
-
-  const date = new Date(dateString);
 
   return date.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
 // ==========================================
-// LOAD SEMUA DATA
+// MUAT ULANG DATA
 // ==========================================
 
 async function loadData() {
-  await fetchBooks();
+  try {
+    await fetchBooks();
 
-  if (currentUser) {
-    await fetchLoans();
+    if (currentUser && authToken) {
+      await fetchLoans();
+    } else {
+      loans = [];
+    }
+
+    renderBooks();
+    renderLoans();
+    updateQuota();
+    updateUserInfo();
+  } catch (error) {
+    console.error(error);
+
+    if (error.message !== "Sesi login tidak berlaku.") {
+      showNotification("Gagal memuat data dari Laravel.", "warning");
+    }
   }
-
-  renderBooks();
-
-  renderLoans();
-
-  updateQuota();
-
-  updateUserInfo();
 }
 
 // ==========================================
@@ -448,8 +474,10 @@ async function loadData() {
 
 function handleLogout() {
   localStorage.removeItem("currentUser");
+  localStorage.removeItem("authToken");
 
   currentUser = null;
+  authToken = null;
   books = [];
   loans = [];
 
@@ -457,15 +485,42 @@ function handleLogout() {
 }
 
 // ==========================================
-// SEARCH BUKU
+// PENCARIAN BUKU
 // ==========================================
 
 function setupSearch() {
-  const searchInput = document.getElementById("search-input");
+  document
+    .getElementById("search-input")
+    ?.addEventListener("input", renderBooks);
+}
 
-  if (searchInput) {
-    searchInput.addEventListener("input", renderBooks);
+// ==========================================
+// NOTIFIKASI
+// ==========================================
+
+function showNotification(message, type = "success") {
+  const container = document.getElementById("alert-container");
+
+  if (!container) {
+    alert(message);
+    return;
   }
+
+  container.textContent = message;
+
+  container.classList.remove("hidden", "warning", "error");
+
+  if (type === "warning") {
+    container.classList.add("warning");
+  }
+
+  if (type === "error") {
+    container.classList.add("error");
+  }
+
+  setTimeout(() => {
+    container.classList.add("hidden");
+  }, 2500);
 }
 
 // ==========================================
@@ -473,69 +528,22 @@ function setupSearch() {
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Login
-  const loginForm = document.getElementById("login-form");
+  document
+    .getElementById("login-form")
+    ?.addEventListener("submit", handleLogin);
 
-  if (loginForm) {
-    loginForm.addEventListener("submit", handleLogin);
-  }
+  document
+    .getElementById("logout-btn")
+    ?.addEventListener("click", handleLogout);
 
-  // Tombol logout
-  const logoutButton = document.getElementById("logout-btn");
-
-  if (logoutButton) {
-    logoutButton.addEventListener("click", handleLogout);
-  }
-
-  // Search
   setupSearch();
 
-  // Kalau sudah pernah login
-  if (currentUser) {
+  if (currentUser && authToken) {
     showMainPage();
-
     await loadData();
   } else {
-    // Kalau belum login,
-    // pastikan login tampil
-    const loginSection = document.getElementById("login-section");
+    document.getElementById("login-section")?.classList.remove("hidden");
 
-    const mainSection = document.getElementById("main-section");
-
-    if (loginSection) {
-      loginSection.classList.remove("hidden");
-    }
-
-    if (mainSection) {
-      mainSection.classList.add("hidden");
-    }
+    document.getElementById("main-section")?.classList.add("hidden");
   }
 });
-
-// ==========================================
-// NOTIFIKASI
-// ==========================================
-
-function showNotification(message, type = "success") {
-  const alertContainer = document.getElementById("alert-container");
-
-  if (!alertContainer) {
-    return;
-  }
-
-  alertContainer.textContent = message;
-
-  alertContainer.classList.remove("hidden", "warning", "error");
-
-  if (type === "warning") {
-    alertContainer.classList.add("warning");
-  }
-
-  if (type === "error") {
-    alertContainer.classList.add("error");
-  }
-
-  setTimeout(() => {
-    alertContainer.classList.add("hidden");
-  }, 2500);
-}
